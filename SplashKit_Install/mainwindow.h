@@ -37,13 +37,20 @@ private slots:
     void on_btn_install_clicked();
     void start_install_msys();
     void start_first_run();
+    void install_gcc();
+    void install_dotnet();
     void install_git();
     void install_skm();
+    void install_vscode();
     void process_finished(int code, QProcess::ExitStatus status);
-    void stateChangedslot(QProcess::ProcessState state);
+    void on_btn_sel_path_clicked();
+
+    void on_btn_cancel_clicked();
 
 private:
     Ui::MainWindow *ui;
     QString cProcess;
+    QString cStatus;
+    bool completeProc;
 };
 #endif // MAINWINDOW_H
