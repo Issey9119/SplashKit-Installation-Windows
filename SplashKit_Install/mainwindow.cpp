@@ -96,15 +96,8 @@ void MainWindow::readOutput(){
         }
         ui->txt_process->setText(cStatus);
         if(output_val.contains("Successfully installed")){
-            QMessageBox::StandardButton reply;
-            reply = QMessageBox::question(this, "Confirm", "Do you want to install Visual Studio Code?", QMessageBox::Yes|QMessageBox::No);
-            if (reply == QMessageBox::Yes) {
-                ui->txt_process->setText("Removing current installation. Please wait..");
-                QCoreApplication::processEvents();
-                install_vscode();
-            } else {
-                return;
-            }
+            install_vscode();
+
 
         }
     }else{
@@ -130,10 +123,9 @@ void MainWindow::readOutput(){
         process->waitForBytesWritten();
     }
     if(output_val.contains("You MUST restart shell to apply necessary actions")){
-        process->terminate();
         install_git();
     }
-    if(cProcess == "gcc" && output_val.contains("Total Installed Size")){
+    if(cProcess == "gcc" && output_val.contains("Optional dependencies for mingw-w64-x86_64-gdb")){
        install_dotnet();
     }
 
@@ -144,8 +136,9 @@ void MainWindow::readOutput(){
         install_gcc();
     }
     if(cProcess == "vscode"){
-        if(output_val.contains("Successfully installed")){
-            ui->txt_process->setText("Installation completed successfully.");
+        ui->txt_process->setText(cStatus);
+        if(output_val.contains("installed")){
+            cStatus = "Installation completed successfully.";
             ui->btn_install->setText("Close");
             ui->btn_install->setEnabled(true);
             completeProc = true;
@@ -186,6 +179,8 @@ void MainWindow::on_btn_install_clicked()
         }
     }
     ui->btn_install->setEnabled(false);
+    ui->txt_path->setEnabled(false);
+    ui->btn_sel_path->setEnabled(false);
     start_install_msys();
 
 }
@@ -196,10 +191,8 @@ void MainWindow::start_install_msys()
     QString intall_path = ui->txt_path->text();
     QString temp_path = QDir::tempPath();
     qDebug() << intall_path;
-    //ui->txt_process->setText("Installing dotnet framework");
-    cStatus = "Installing dotnet framework";
+    cStatus = "Installing MSYS2";
     process = new QProcess(this);
-    //process->setWorkingDirectory(temp_path);
     connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
     connect(process, SIGNAL(finished(int, QProcess::ExitStatus )), this, SLOT(process_finished(int, QProcess::ExitStatus )));
     process->start("msys2-base-x86_64-latest.sfx.exe", QStringList() << "-y"  << "-o" + intall_path);
@@ -220,8 +213,6 @@ void MainWindow::start_first_run()
     process->setWorkingDirectory(intall_path);
     process->start("cmd", QStringList() << "/c" << "bash" << "-lc" << "' '" );
 
-    qDebug() << "ok here";
-
 }
 
 void MainWindow::install_gcc()
@@ -231,23 +222,23 @@ void MainWindow::install_gcc()
     qDebug() << intall_path;
     ui->txt_process->setText("Installing gcc");
     process = new QProcess(this);
+    process->setWorkingDirectory(intall_path);
     connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
     connect(process, SIGNAL(finished(int, QProcess::ExitStatus )), this, SLOT(process_finished(int, QProcess::ExitStatus )));
     process->setWorkingDirectory(intall_path);
-    process->start(intall_path + "\\bash.exe", QStringList() << "-lc" << "pacman -S mingw-w64-{x86_64,i686}-gcc mingw-w64-{i686,x86_64}-gdb" );
+    process->start( intall_path + "\\bash.exe", QStringList() <<  "-lc" << "yes | pacman --disable-download-timeout -S mingw-w64-{x86_64,i686}-gcc mingw-w64-{i686,x86_64}-gdb" );
 }
 
 void MainWindow::install_dotnet()
 {
     cProcess = "dotnet";
-    QString intall_path = ui->txt_path->text() + "msys64";
-    qDebug() << intall_path;
     ui->txt_process->setText("Downloading Microsoft.DotNet.SDK.6");
-    cStatus = "Installing dotnet framework";
+    cStatus = "Installing Microsoft.DotNet.SDK.6";
     process = new QProcess(this);
     connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
     connect(process, SIGNAL(finished(int, QProcess::ExitStatus )), this, SLOT(process_finished(int, QProcess::ExitStatus )));
     process->start("powershell", QStringList() << "/c" << "&" << "$env:LOCALAPPDATA\\Microsoft\\WindowsApps\\winget" << "install" << "Microsoft.DotNet.SDK.6"  );
+
 }
 
 void MainWindow::install_git()
@@ -279,15 +270,26 @@ void MainWindow::install_skm()
 
 void MainWindow::install_vscode()
 {
-    cProcess = "vscode";
-    QString intall_path = ui->txt_path->text() + "msys64";
-    qDebug() << intall_path;
-    ui->txt_process->setText("Installing Microsoft.VisualStudioCode");
-    cStatus = "Installing Microsoft.VisualStudioCode";
-    process = new QProcess(this);
-    connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
-    connect(process, SIGNAL(finished(int, QProcess::ExitStatus )), this, SLOT(process_finished(int, QProcess::ExitStatus )));
-    process->start("powershell", QStringList() << "/c" << "&" << "$env:LOCALAPPDATA\\Microsoft\\WindowsApps\\winget" << "install" << "Microsoft.VisualStudioCode"  );
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Confirm", "Do you want to install Visual Studio Code?", QMessageBox::Yes|QMessageBox::No);
+    if (reply == QMessageBox::Yes) {
+        cProcess = "vscode";
+        QString intall_path = ui->txt_path->text() + "msys64";
+        qDebug() << intall_path;
+        ui->txt_process->setText("Installing Microsoft.VisualStudioCode");
+        cStatus = "Installing Microsoft.VisualStudioCode";
+        process = new QProcess(this);
+        connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
+        connect(process, SIGNAL(finished(int, QProcess::ExitStatus )), this, SLOT(process_finished(int, QProcess::ExitStatus )));
+        process->start("powershell", QStringList() << "/c" << "&" << "$env:LOCALAPPDATA\\Microsoft\\WindowsApps\\winget" << "install" << "Microsoft.VisualStudioCode"  );
+    } else {
+        qDebug() << "no";
+        ui->txt_process->setText("Installation completed successfully.");
+        ui->btn_install->setText("Close");
+        ui->btn_install->setEnabled(true);
+        completeProc = true;
+    }
+
 }
 
 void MainWindow::process_finished(int code, QProcess::ExitStatus status)
